@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculateur IFI Tunisie</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10">
+    <!-- ====== Logo du cabinet ====== -->
+    <!-- Remplacez 'logo.png' par le chemin/URL réel de votre logo -->
+    <img src="logo.png" alt="Logo du cabinet" class="h-20 mb-4">
+
+    <h1 class="text-3xl font-bold mb-6 text-center">Calculateur de l'impôt sur la fortune immobilière (Tunisie)</h1>
+
+    <div class="w-full max-w-3xl bg-white shadow-md rounded-2xl p-6">
+        <p class="mb-4 text-sm text-gray-600">
+            Conformément à l'article 23 de la Loi de finances 2023, les personnes physiques dont la fortune immobilière nette (hors résidence principale et biens professionnels) atteint <span class="font-semibold">3&nbsp;000&nbsp;000&nbsp;TND</span> ou plus sont soumises à un impôt annuel de <span class="font-semibold">0,5&nbsp;%</span> sur la totalité de ce patrimoine net.
+        </p>
+        <!-- ====== Tableau des biens ====== -->
+        <div class="overflow-x-auto">
+            <table id="propertyTable" class="min-w-full border rounded-lg">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-700 text-left text-sm">
+                        <th class="p-2">Description</th>
+                        <th class="p-2">Valeur de l'immeuble (TND)</th>
+                        <th class="p-2">Catégorie</th>
+                        <th class="p-2">Dettes grevant l'immeuble (TND)</th>
+                        <th class="p-2 text-center">&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Lignes injectées dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+
+        <button id="addRowBtn" class="flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            Ajouter un bien
+        </button>
+
+        <!-- ====== Résultats ====== -->
+        <div id="results" class="mt-6 hidden">
+            <p class="text-lg font-semibold">Résultat :</p>
+            <p id="netValue" class="mt-1 text-gray-700"></p>
+            <p id="taxDue" class="mt-1 text-gray-700"></p>
+        </div>
+
+        <!-- ====== Bouton Calcul ====== -->
+        <button id="calcBtn" class="mt-6 w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition">Calculer l'IFI</button>
+    </div>
+
+    <script>
+        const tableBody   = document.querySelector('#propertyTable tbody');
+        const addRowBtn   = document.getElementById('addRowBtn');
+        const calcBtn     = document.getElementById('calcBtn');
+        const resultsDiv  = document.getElementById('results');
+        const netValueP   = document.getElementById('netValue');
+        const taxDueP     = document.getElementById('taxDue');
+
+        // ====== Ajouter une ligne ======
+        function addRow() {
+            const row = document.createElement('tr');
+            row.classList.add('border-b');
+            row.innerHTML = `
+                <td class="p-2"><input type="text" placeholder="Appartement S+2, Ariana" class="w-full border rounded p-1 text-sm" /></td>
+                <td class="p-2"><input type="number" min="0" step="0.01" placeholder="0" class="w-full border rounded p-1 text-sm value-field" /></td>
+                <td class="p-2">
+                    <select class="w-full border rounded p-1 text-sm category-field">
+                        <option value="imposable" selected>Imposable</option>
+                        <option value="principale">Résidence principale (exonérée)</option>
+                        <option value="pro">Affecté à l'activité pro (exonéré)</option>
+                    </select>
+                </td>
+                <td class="p-2"><input type="number" min="0" step="0.01" placeholder="0" class="w-full border rounded p-1 text-sm debt-field" /></td>
+                <td class="p-2 text-center"><button class="text-red-600 remove-row">&times;</button></td>
+            `;
+            tableBody.appendChild(row);
+        }
+
+        // ====== Calcul ======
+        function calculate() {
+            let netTaxable = 0;
+            tableBody.querySelectorAll('tr').forEach(row => {
+                const value    = parseFloat(row.querySelector('.value-field').value)    || 0;
+                const category = row.querySelector('.category-field').value;
+                const debt     = parseFloat(row.querySelector('.debt-field').value)    || 0;
+                if (category === 'imposable') {
+                    const taxableValue = Math.max(0, value - debt);
+                    netTaxable += taxableValue;
+                }
+            });
+
+            const formatter = new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' });
+            netValueP.textContent = `Valeur nette imposable : ${formatter.format(netTaxable)}`;
+
+            if (netTaxable >= 3000000) {
+                const tax = netTaxable * 0.005;
+                taxDueP.textContent = `Montant de l'IFI dû (0,5%) : ${formatter.format(tax)}`;
+            } else {
+                taxDueP.textContent = `Vous n'êtes pas assujetti(e) à l'IFI (seuil de 3 000 000 TND non atteint).`;
+            }
+
+            resultsDiv.classList.remove('hidden');
+        }
+
+        // ====== Événements ======
+        addRow(); // ligne initiale
+        addRowBtn.addEventListener('click', addRow);
+        calcBtn.addEventListener('click', calculate);
+        tableBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-row')) {
+                e.target.closest('tr').remove();
+            }
+        });
+    </script>
+</body>
+</html>
